@@ -6,15 +6,15 @@ import Painter from './components/painter/painter';
 import styles from './pixel-paint.module.css';
 
 export function PixelPaint({ onSetupLibrary }) {
-  const { fileList, assetList, selectedIndex } = useEditor();
+  const { fileList, assetList, selectedFileId } = useEditor();
 
   let imageList = assetList.filter((asset) => /^image\//.test(asset.type));
   let mode = 'image';
 
-  const target = fileList[selectedIndex];
+  const target = fileList.find((file) => file.id === selectedFileId);
   if (target && target.assets && target.frame != null) {
     imageList = imageList.filter((image) => target.assets.includes(image.id));
-    mode = selectedIndex === 0 ? 'backdrop' : 'costume';
+    mode = selectedFileId === fileList[0].id ? 'backdrop' : 'costume';
   }
 
   return (
