@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { useLocale, useEditor } from '@blockcode/core';
-import { classNames, Label, BufferedInput, Input, Button } from '@blockcode/ui';
+import { classNames, Text, Label, BufferedInput, Input, Button } from '@blockcode/ui';
 import { Color } from '../../lib/color';
 import { createImage } from '../../lib/create-image';
 
@@ -278,34 +278,49 @@ export default function Painter({ mode, imageList, imageIndex }) {
         </div>
       </div>
 
-      <div className={classNames(styles.row, styles.rowRight)}>
-        <Button
-          className={classNames(styles.button, styles.groupButtonFirst)}
-          onClick={() => zoom - 1 > 0 && setZoom(zoom - 1)}
-        >
-          <img
-            src={zoomOutIcon}
-            className={styles.buttonIcon}
-          />
-        </Button>
-        <Button
-          className={classNames(styles.button, styles.groupButton)}
-          onClick={() => setZoom(1)}
-        >
-          <img
-            src={zoomResetIcon}
-            className={styles.buttonIcon}
-          />
-        </Button>
-        <Button
-          className={classNames(styles.button, styles.groupButtonLast)}
-          onClick={() => zoom + 1 < 20 && setZoom(zoom + 1)}
-        >
-          <img
-            src={zoomInIcon}
-            className={styles.buttonIcon}
-          />
-        </Button>
+      <div className={classNames(styles.row, styles.rowBottom)}>
+        <div>
+          {mode === 'backdrop' && (
+            <Button
+              disabled
+              className={styles.textButton}
+            >
+              <Text
+                id="pixelPaint.mode.tileMap"
+                defaultMessage="Convert to TileMap"
+              />
+            </Button>
+          )}
+        </div>
+        <div>
+          <Button
+            className={classNames(styles.button, styles.groupButtonFirst)}
+            onClick={() => zoom - 1 > 0 && setZoom(zoom - 1)}
+          >
+            <img
+              src={zoomOutIcon}
+              className={styles.buttonIcon}
+            />
+          </Button>
+          <Button
+            className={classNames(styles.button, styles.groupButton)}
+            onClick={() => setZoom(1)}
+          >
+            <img
+              src={zoomResetIcon}
+              className={styles.buttonIcon}
+            />
+          </Button>
+          <Button
+            className={classNames(styles.button, styles.groupButtonLast)}
+            onClick={() => zoom + 1 < 20 && setZoom(zoom + 1)}
+          >
+            <img
+              src={zoomInIcon}
+              className={styles.buttonIcon}
+            />
+          </Button>
+        </div>
       </div>
     </div>
   );

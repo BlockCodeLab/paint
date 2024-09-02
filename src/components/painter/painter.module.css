@@ -20,9 +20,10 @@
   flex: 1;
 }
 
-.row-right {
-  justify-content: right;
+.row-bottom {
+  justify-content: space-between;
   margin-right: var(--space);
+  margin-left: calc(7em + var(--space));
 }
 
 .row:last-child {
@@ -68,6 +69,11 @@
 
 .button {
   width: calc(2rem + 2px);
+  height: calc(2rem + 2px);
+  padding: 0.375rem;
+}
+
+.text-button {
   height: calc(2rem + 2px);
   padding: 0.375rem;
 }

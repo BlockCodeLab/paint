@@ -31,3 +31,6 @@ pixelPaint.painter.outline: 轮廓
 pixelPaint.colorPicker.color: 颜色
 pixelPaint.colorPicker.saturation: 饱和度
 pixelPaint.colorPicker.brightness: 亮度
+
+pixelPaint.mode.pixel: 转换为位图
+pixelPaint.mode.tileMap: 转换为 TileMap

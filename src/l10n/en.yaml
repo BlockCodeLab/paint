@@ -31,3 +31,6 @@ pixelPaint.painter.outline: Outline
 pixelPaint.colorPicker.color: Color
 pixelPaint.colorPicker.saturation: Saturation
 pixelPaint.colorPicker.brightness: Brightness
+
+pixelPaint.mode.pixel: Convert to Bitmap
+pixelPaint.mode.tileMap: Convert to TileMap
