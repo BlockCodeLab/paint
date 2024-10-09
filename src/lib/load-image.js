@@ -1,5 +1,8 @@
 import { Point } from './point';
 
+const IMAGE_DATA_OFFSET = 'data:image/png;base64,'.length;
+const EMPTY_IMAGE = 'data:,';
+
 export function uploadImage(file) {
   return new Promise(async (resolve) => {
     const reader = new FileReader();
@@ -8,56 +11,75 @@ export function uploadImage(file) {
       const image = new Image();
       image.src = reader.result;
       image.addEventListener('load', () => {
+        if (image.dataset.data) {
+          resolve(image);
+          return;
+        }
+
+        let width = image.width;
+        let height = image.height;
+
         if (image.width > Point.DrawWidth || image.height > Point.DrawHeight) {
+          width = Point.DrawWidth;
+          height = Point.DrawHeight;
+
           const sw = image.width / Point.DrawWidth;
           const sh = image.height / Point.DrawHeight;
-
-          let w = Point.DrawWidth;
-          let h = Point.DrawHeight;
           if (sw > sh) {
-            h = image.height / sw;
+            height = image.height / sw;
           } else {
-            w = image.width / sh;
+            width = image.width / sh;
           }
-
-          const canvas = document.createElement('canvas');
-          canvas.width = w;
-          canvas.height = h;
-
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(image, 0, 0, w, h);
-          image.src = canvas.toDataURL(file.type);
-        } else {
-          image.dataset.url = image.src;
-          resolve(image);
         }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(image, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/png');
+        if (dataUrl === EMPTY_IMAGE) {
+          resolve(null);
+          return;
+        }
+        image.dataset.data = dataUrl.slice(IMAGE_DATA_OFFSET);
+        image.src = dataUrl;
       });
     });
   });
 }
 
-export function loadImageFromData(data) {
+export function loadImageFromDataURL(dataurl) {
   return new Promise(async (resolve) => {
     const image = new Image();
-    image.src = `data:${data.type};base64,${data.data}`;
+    let type = 'image/png';
+    if (typeof dataurl === 'string') {
+      image.src = dataurl;
+    } else {
+      type = dataurl.type;
+      image.src = `data:${type};base64,${dataurl.data}`;
+    }
     image.addEventListener('load', () => {
-      image.dataset.url = image.src;
+      image.dataset.data = image.src.slice(`data:${type};base64,`.length);
       resolve(image);
     });
   });
 }
 
-export function loadImage(src) {
+export function loadImageFromURL(url) {
   return new Promise(async (resolve) => {
     const image = new Image();
-    image.src = src;
+    image.src = url;
     image.addEventListener('load', () => {
       const canvas = document.createElement('canvas');
       canvas.width = image.width;
       canvas.height = image.height;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(image, 0, 0, image.width, image.height);
-      image.dataset.url = canvas.toDataURL('image/png');
+      const dataUrl = canvas.toDataURL('image/png');
+      image.dataset.data = dataUrl.slice(IMAGE_DATA_OFFSET);
       resolve(image);
     });
   });

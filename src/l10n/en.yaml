@@ -5,6 +5,7 @@ pixelPaint.contextMenu.delete: delete
 pixelPaint.actionButton.upload: Upload Image
 pixelPaint.actionButton.uploadCostume: Upload Costume
 pixelPaint.actionButton.uploadBackdrop: Upload Backdrop
+pixelPaint.actionButton.uploadError: Upload "{file}" failed.
 pixelPaint.actionButton.surprise: Surprise
 pixelPaint.actionButton.paint: Paint
 pixelPaint.actionButton.image: Choose a Image

@@ -5,6 +5,7 @@ pixelPaint.contextMenu.delete: 删除
 pixelPaint.actionButton.upload: 上传图片
 pixelPaint.actionButton.uploadCostume: 上传造型
 pixelPaint.actionButton.uploadBackdrop: 上传背景
+pixelPaint.actionButton.uploadError: 上传“{file}”失败。
 pixelPaint.actionButton.surprise: 随机
 pixelPaint.actionButton.paint: 绘制
 pixelPaint.actionButton.image: 选择一个图片

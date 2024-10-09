@@ -1,7 +1,7 @@
 import { useState } from 'preact/hooks';
 import { useLocale, useLayout, useEditor } from '@blockcode/core';
 import { IconSelector, ActionButton } from '@blockcode/ui';
-import { uploadImage, loadImage } from '../../lib/load-image';
+import { uploadImage, loadImageFromURL } from '../../lib/load-image';
 import uid from '../../lib/uid';
 
 import styles from './selector.module.css';
@@ -49,16 +49,16 @@ export default function Selector({ mode, imageList, imageIndex, onSetupLibrary }
     setBackdropsLibrary(false);
   };
 
-  const handleSelectAsset = async (asset) => {
+  const handleSelectAsset = async ({ tags, ...asset }) => {
     const assetId = uid();
     createAlert('importing', { id: assetId });
 
-    const image = await loadImage(`./assets/${asset.id}.png`);
+    const image = await loadImageFromURL(`./assets/${asset.id}.png`);
     addAsset({
       ...asset,
       id: assetId,
       type: 'image/png',
-      data: image.dataset.url.slice('data:image/png;base64,'.length),
+      data: image.dataset.data,
       width: image.width,
       height: image.height,
     });
@@ -101,19 +101,34 @@ export default function Selector({ mode, imageList, imageIndex, onSetupLibrary }
     fileInput.accept = 'image/*';
     fileInput.multiple = true;
     fileInput.click();
-    fileInput.addEventListener('change', async (e) => {
+    fileInput.addEventListener('change', async ({ target }) => {
       const alertId = uid();
       createAlert('importing', { id: alertId });
 
-      for (const file of e.target.files) {
+      for (const file of target.files) {
         const imageId = uid();
         const imageName = file.name.slice(0, file.name.lastIndexOf('.'));
-        const image = await uploadImage(file);
+        let image = await uploadImage(file);
+        if (image) {
+          createAlert(
+            {
+              message: getText('pixelPaint.actionButton.uploadError', 'Upload "{file}" failed.', { file: file.name }),
+            },
+            2000,
+          );
+          image = {
+            dataset: {
+              data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAAtJREFUGFdjYAACAAAFAAGq1chRAAAAAElFTkSuQmCC',
+            },
+            width: 1,
+            height: 1,
+          };
+        }
         addAsset({
           id: imageId,
-          type: file.type,
+          type: 'image/png',
           name: imageName,
-          data: image.dataset.url.slice(`data:${file.type};base64,`.length),
+          data: image.dataset.data,
           width: image.width,
           height: image.height,
           centerX: Math.floor(image.width / 2),
