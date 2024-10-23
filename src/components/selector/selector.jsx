@@ -109,7 +109,7 @@ export default function Selector({ mode, imageList, imageIndex, onSetupLibrary }
         const imageId = uid();
         const imageName = file.name.slice(0, file.name.lastIndexOf('.'));
         let image = await uploadImage(file);
-        if (image) {
+        if (!image) {
           createAlert(
             {
               message: getText('pixelPaint.actionButton.uploadError', 'Upload "{file}" failed.', { file: file.name }),
