@@ -31,7 +31,7 @@
   min-height: unset;
 }
 
-.group {
+.tool-group {
   display: inline-flex;
   flex-direction: row;
   align-items: center;
@@ -81,6 +81,10 @@
 .button-icon {
   margin: auto;
   width: 1.5rem;
+}
+
+.simple-group {
+  display: inline-flex;
 }
 
 .group-button {

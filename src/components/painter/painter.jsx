@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { useLocale, useEditor } from '@blockcode/core';
-import { classNames, Text, Label, BufferedInput, Input, Button } from '@blockcode/ui';
+import { classNames, Text, Label, BufferedInput, Button } from '@blockcode/ui';
 import { Color } from '../../lib/color';
 import { createImage } from '../../lib/create-image';
 
@@ -17,6 +17,10 @@ import zoomOutIcon from './icons/icon-zoom-out.svg';
 import zoomResetIcon from './icons/icon-zoom-reset.svg';
 import penIcon from '../tool-box/icons/icon-pen.svg';
 import eraserIcon from '../tool-box/icons/icon-eraser.svg';
+
+const clamp = (value, min = 0, max = Infinity) => {
+  return Math.min(Math.max(min, value), max);
+};
 
 export default function Painter({ mode, imageList, imageIndex }) {
   const { getText, maybeLocaleText } = useLocale();
@@ -51,21 +55,14 @@ export default function Painter({ mode, imageList, imageIndex }) {
       image.data = newImage.data;
       image.width = newImage.width;
       image.height = newImage.height;
-      image.centerX = newImage.centerX;
-      image.centerY = newImage.centerY;
+      // image.centerX = newImage.centerX;
+      // image.centerY = newImage.centerY;
     }
     modifyAsset(image);
   };
 
-  const handleChange = (key, value) => {
-    const image = {};
-
-    if (key === 'name') {
-      image.name = value;
-    }
-    if (key === 'data') {
-      image.data = value;
-
+  const handleChange = (image) => {
+    if (image.data) {
       if (undoList.length > 20) {
         undoList.splice(1, 1);
       }
@@ -115,7 +112,7 @@ export default function Painter({ mode, imageList, imageIndex }) {
   return (
     <div className={styles.painterWrapper}>
       <div className={styles.row}>
-        <div className={styles.group}>
+        <div className={styles.toolGroup}>
           <Label
             text={getTextByMode(
               getText('pixelPaint.painter.image', 'Image'),
@@ -127,7 +124,7 @@ export default function Painter({ mode, imageList, imageIndex }) {
               disabled={disabled}
               className={styles.nameInput}
               placeholder={getText('pixelPaint.painter.name', 'name')}
-              onSubmit={(value) => handleChange('name', value)}
+              onSubmit={(name) => handleChange({ name })}
               value={
                 imageAsset
                   ? maybeLocaleText(imageAsset.name)
@@ -141,7 +138,7 @@ export default function Painter({ mode, imageList, imageIndex }) {
           </Label>
         </div>
 
-        <div className={styles.group}>
+        <div className={styles.toolGroup}>
           <Button
             disabled={undoList.length <= 1}
             className={classNames(styles.button, styles.groupButtonFirst, {
@@ -170,7 +167,7 @@ export default function Painter({ mode, imageList, imageIndex }) {
           </Button>
         </div>
 
-        <div className={styles.group}>
+        <div className={styles.toolGroup}>
           {mode === 'costume' && (
             <Button
               vertical
@@ -191,7 +188,7 @@ export default function Painter({ mode, imageList, imageIndex }) {
       </div>
 
       <div className={styles.row}>
-        <div className={styles.group}>
+        <div className={styles.toolGroup}>
           <Label text={getText('pixelPaint.painter.fill', 'Fill')}>
             <ColorPicker
               picking={paintMode.startsWith('picker-')}
@@ -202,7 +199,7 @@ export default function Painter({ mode, imageList, imageIndex }) {
           </Label>
         </div>
 
-        <div className={classNames(styles.group, styles.dashedBorder)}>
+        <div className={classNames(styles.toolGroup, styles.dashedBorder)}>
           <Label
             className={classNames({
               [styles.disabled]: true,
@@ -218,40 +215,32 @@ export default function Painter({ mode, imageList, imageIndex }) {
             />
           </Label>
 
-          <Input
+          <BufferedInput
             small
             type="number"
-            min={0}
-            max={100}
-            step={1}
             className={classNames(styles.largeInput, {
               [styles.disabled]: true,
             })}
             value={outlineSize}
-            onChange={(e) => setOutlineSize(e.target.valueAsNumber)}
+            onSubmit={(value) => setOutlineSize(clamp(value, 0, 100))}
           />
         </div>
 
-        <div className={styles.group}>
-          {selectedTool === 'pen' || selectedTool === 'eraser' ? (
-            <>
-              <img
-                src={selectedTool === 'pen' ? penIcon : eraserIcon}
-                className={styles.toolIcon}
-              />
-              <Input
-                small
-                type="number"
-                min={1}
-                max={100}
-                step={1}
-                className={styles.largeInput}
-                value={penSize}
-                onChange={(e) => setPenSize(e.target.valueAsNumber)}
-              />
-            </>
-          ) : null}
-        </div>
+        {selectedTool === 'pen' || selectedTool === 'eraser' ? (
+          <div className={styles.toolGroup}>
+            <img
+              src={selectedTool === 'pen' ? penIcon : eraserIcon}
+              className={styles.toolIcon}
+            />
+            <BufferedInput
+              small
+              type="number"
+              className={styles.largeInput}
+              value={penSize}
+              onSubmit={(value) => setPenSize(clamp(value, 1, 100))}
+            />
+          </div>
+        ) : null}
       </div>
 
       <div className={classNames(styles.row, styles.rowFill)}>
@@ -272,14 +261,14 @@ export default function Painter({ mode, imageList, imageIndex }) {
               type: paintMode === 'draw' ? selectedTool : paintMode,
             }}
             undoList={undoList}
-            onChange={(imageData) => handleChange('data', imageData)}
+            onChange={(data) => handleChange(data)}
             onChangeColor={handleChangeColor}
           />
         </div>
       </div>
 
       <div className={classNames(styles.row, styles.rowBottom)}>
-        <div>
+        <div className={styles.simpleGroup}>
           {mode === 'backdrop' && (
             <Button
               disabled
@@ -292,7 +281,7 @@ export default function Painter({ mode, imageList, imageIndex }) {
             </Button>
           )}
         </div>
-        <div>
+        <div className={styles.simpleGroup}>
           <Button
             className={classNames(styles.button, styles.groupButtonFirst)}
             onClick={() => zoom - 1 > 0 && setZoom(zoom - 1)}
