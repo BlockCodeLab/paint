@@ -189,7 +189,12 @@ export default function Painter({ mode, imageList, imageIndex }) {
 
       <div className={styles.row}>
         <div className={styles.toolGroup}>
-          <Label text={getText('pixelPaint.painter.fill', 'Fill')}>
+          <Label
+            className={classNames({
+              [styles.disabled]: selectedTool === 'eraser',
+            })}
+            text={getText('pixelPaint.painter.fill', 'Fill')}
+          >
             <ColorPicker
               picking={paintMode.startsWith('picker-')}
               color={fillColor}

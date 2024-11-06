@@ -52,71 +52,75 @@ export default function ToolBox({ selectedTool, onSelect }) {
           title={getText('pixelPaint.painter.fill', 'Fill')}
         />
       </Button>
-      <Button
-        disabled
-        className={classNames(styles.toolButton, {
-          [styles.selected]: selectedTool === 'text',
-        })}
-        onClick={() => onSelect('text')}
-      >
-        <img
-          src={textIcon}
-          className={styles.toolIcon}
-          title={getText('pixelPaint.painter.text', 'Text')}
-        />
-      </Button>
-      <Button
-        disabled
-        className={classNames(styles.toolButton, {
-          [styles.selected]: selectedTool === 'line',
-        })}
-        onClick={() => onSelect('line')}
-      >
-        <img
-          src={lineIcon}
-          className={styles.toolIcon}
-          title={getText('pixelPaint.painter.line', 'Line')}
-        />
-      </Button>
-      <Button
-        disabled
-        className={classNames(styles.toolButton, {
-          [styles.selected]: selectedTool === 'rectangle',
-        })}
-        onClick={() => onSelect('rectangle')}
-      >
-        <img
-          src={rectangleIcon}
-          className={styles.toolIcon}
-          title={getText('pixelPaint.painter.rectangle', 'Rectangle')}
-        />
-      </Button>
-      <Button
-        disabled
-        className={classNames(styles.toolButton, {
-          [styles.selected]: selectedTool === 'circle',
-        })}
-        onClick={() => onSelect('circle')}
-      >
-        <img
-          src={circleIcon}
-          className={styles.toolIcon}
-          title={getText('pixelPaint.painter.circle', 'Circle')}
-        />
-      </Button>
-      <Button
-        disabled
-        className={classNames(styles.toolButton, {
-          [styles.selected]: selectedTool === 'select',
-        })}
-        onClick={() => onSelect('select')}
-      >
-        <img
-          src={selectIcon}
-          className={styles.toolIcon}
-          title={getText('pixelPaint.painter.select', 'Select')}
-        />
-      </Button>
+      {IDEAL ? null : (
+        <>
+          <Button
+            disabled
+            className={classNames(styles.toolButton, {
+              [styles.selected]: selectedTool === 'text',
+            })}
+            onClick={() => onSelect('text')}
+          >
+            <img
+              src={textIcon}
+              className={styles.toolIcon}
+              title={getText('pixelPaint.painter.text', 'Text')}
+            />
+          </Button>
+          <Button
+            disabled
+            className={classNames(styles.toolButton, {
+              [styles.selected]: selectedTool === 'line',
+            })}
+            onClick={() => onSelect('line')}
+          >
+            <img
+              src={lineIcon}
+              className={styles.toolIcon}
+              title={getText('pixelPaint.painter.line', 'Line')}
+            />
+          </Button>
+          <Button
+            disabled
+            className={classNames(styles.toolButton, {
+              [styles.selected]: selectedTool === 'rectangle',
+            })}
+            onClick={() => onSelect('rectangle')}
+          >
+            <img
+              src={rectangleIcon}
+              className={styles.toolIcon}
+              title={getText('pixelPaint.painter.rectangle', 'Rectangle')}
+            />
+          </Button>
+          <Button
+            disabled
+            className={classNames(styles.toolButton, {
+              [styles.selected]: selectedTool === 'circle',
+            })}
+            onClick={() => onSelect('circle')}
+          >
+            <img
+              src={circleIcon}
+              className={styles.toolIcon}
+              title={getText('pixelPaint.painter.circle', 'Circle')}
+            />
+          </Button>
+          <Button
+            disabled
+            className={classNames(styles.toolButton, {
+              [styles.selected]: selectedTool === 'select',
+            })}
+            onClick={() => onSelect('select')}
+          >
+            <img
+              src={selectIcon}
+              className={styles.toolIcon}
+              title={getText('pixelPaint.painter.select', 'Select')}
+            />
+          </Button>
+        </>
+      )}
     </div>
   );
 }
