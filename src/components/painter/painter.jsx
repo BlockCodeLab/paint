@@ -46,19 +46,18 @@ export default function Painter({ mode, imageList, imageIndex }) {
     return defaultText;
   };
 
-  const modifyImage = (image) => {
-    image.id = imageId;
-
-    if (image.data) {
-      const newImage = createImage(image.data);
-      image.type = newImage.type;
-      image.data = newImage.data;
-      image.width = newImage.width;
-      image.height = newImage.height;
-      // image.centerX = newImage.centerX;
-      // image.centerY = newImage.centerY;
+  const modifyImage = (newImage) => {
+    newImage.id = imageId;
+    if (newImage.data) {
+      const { type, data, width, height, centerX, centerY } = createImage(newImage.data);
+      newImage.type = type;
+      newImage.data = data;
+      newImage.width = width;
+      newImage.height = height;
+      newImage.centerX = centerX;
+      newImage.centerY = centerY;
     }
-    modifyAsset(image);
+    modifyAsset(newImage);
   };
 
   const handleChange = (image) => {

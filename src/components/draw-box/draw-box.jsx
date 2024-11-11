@@ -217,11 +217,13 @@ export default function DrawBox({ image: defaultImage, selectedTool, zoom, undoL
     } else if (selectedTool.type.startsWith('picker-')) {
       e.stopPropagation();
     } else if (selectedTool.type.startsWith('center')) {
-      const centerX = Math.floor(x - (Point.DrawWidth - defaultImage.width) / 2);
-      const centerY = Math.floor(y - (Point.DrawHeight - defaultImage.height) / 2);
-      onChange({ centerX, centerY });
-      // putImageData();
-      // getImageData();
+      // const centerX = Math.floor(x - (Point.DrawWidth - defaultImage.width) / 2);
+      // const centerY = Math.floor(y - (Point.DrawHeight - defaultImage.height) / 2);
+      // onChange({ centerX, centerY });
+      const dx = Point.DrawWidth / 2 - x;
+      const dy = Point.DrawHeight / 2 - y;
+      putImageData(dx, dy);
+      getImageData();
     }
 
     // mouse leave draw box
@@ -254,9 +256,7 @@ export default function DrawBox({ image: defaultImage, selectedTool, zoom, undoL
       } else {
         getImageData();
       }
-      if (selectedTool.type === 'pen' || selectedTool.type === 'eraser') {
-        pen(point);
-      }
+      pen(point);
       putImageData();
     } else if (selectedTool.type.startsWith('picker-')) {
       // const [r, g, b, a] = context.getImageData(x, y, 1, 1).data;
@@ -341,16 +341,20 @@ export default function DrawBox({ image: defaultImage, selectedTool, zoom, undoL
       });
 
       const centerIcon = ref.current.nextSibling;
-      centerIcon.style.top = `${centerY * zoom}px`;
-      centerIcon.style.left = `${centerX * zoom}px`;
+      // centerIcon.style.top = `${centerY * zoom}px`;
+      // centerIcon.style.left = `${centerX * zoom}px`;
+      centerIcon.style.top = `${(zoom * Point.DrawHeight) / 2}px`;
+      centerIcon.style.left = `${(zoom * Point.DrawWidth) / 2}px`;
     }
   }, [zoom]);
 
   if (context && undoList.length === 0) {
     if (defaultImage) {
       loadImageFromDataURL(defaultImage).then((image) => {
-        const dx = (Point.DrawWidth - defaultImage.width) / 2;
-        const dy = (Point.DrawHeight - defaultImage.height) / 2;
+        // const dx = (Point.DrawWidth - defaultImage.width) / 2;
+        // const dy = (Point.DrawHeight - defaultImage.height) / 2;
+        const dx = Point.DrawWidth / 2 - defaultImage.centerX;
+        const dy = Point.DrawHeight / 2 - defaultImage.centerY;
         context.clearRect(0, 0, Point.DrawWidth, Point.DrawHeight);
         context.drawImage(image, dx, dy);
         getImageData();
@@ -392,10 +396,10 @@ export default function DrawBox({ image: defaultImage, selectedTool, zoom, undoL
           className={classNames(styles.centerIcon, {
             [styles.hidden]: selectedTool.type !== 'center',
           })}
-          style={{
-            top: `${centerY * zoom}px`,
-            left: `${centerX * zoom}px`,
-          }}
+          // style={{
+          //   top: `${centerY * zoom}px`,
+          //   left: `${centerX * zoom}px`,
+          // }}
         />
       </div>
     </div>
