@@ -9,6 +9,7 @@ const getTop = (imageData) => {
       i++;
     }
   }
+  return 0;
 };
 
 const getBottom = (imageData, top) => {
@@ -22,6 +23,7 @@ const getBottom = (imageData, top) => {
       i++;
     }
   }
+  return 0;
 };
 
 const getLeft = (imageData, top, bottom) => {
@@ -34,6 +36,7 @@ const getLeft = (imageData, top, bottom) => {
       }
     }
   }
+  return 0;
 };
 
 const getRight = (imageData, top, bottom, left) => {
@@ -46,6 +49,7 @@ const getRight = (imageData, top, bottom, left) => {
       }
     }
   }
+  return 0;
 };
 
 export function getBoundingBox(imageData) {
@@ -53,14 +57,14 @@ export function getBoundingBox(imageData) {
   const bottom = getBottom(imageData, top);
   const left = getLeft(imageData, top, bottom);
   const right = getRight(imageData, top, bottom, left);
-
-  const boundingBox = {
-    top: top || 0,
-    left: left || 0,
-    right: right || 0,
-    bottom: bottom || 0,
+  return {
+    top,
+    left,
+    right,
+    bottom,
+    x: left,
+    y: top,
+    width: right - left + 1,
+    height: bottom - top + 1,
   };
-  boundingBox.width = boundingBox.right - boundingBox.left + 1;
-  boundingBox.height = boundingBox.bottom - boundingBox.top + 1;
-  return boundingBox;
 }

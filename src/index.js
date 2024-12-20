@@ -1,9 +1,9 @@
-export { PixelPaint } from './pixel-paint';
+import './l10n';
 
-import en from './l10n/en.yaml';
-import zhHans from './l10n/zh-hans.yaml';
+export { EditorModes } from './lib/editor-mode';
 
-export const locales = {
-  en,
-  'zh-Hans': zhHans,
-};
+export { loadImageFromFile, loadImageFromAsset, loadImageFromURL, BlankImageData } from './lib/load-image';
+
+export { PaintEditor } from './components/paint-editor/paint-editor';
+
+export { paintTab } from './components/tab/paint-tab';

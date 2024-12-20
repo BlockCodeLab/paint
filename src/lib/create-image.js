@@ -1,17 +1,22 @@
 import { getBoundingBox } from './get-bounding-box';
 
-export function createImage(imageData) {
-  const { top, left, width, height } = getBoundingBox(imageData);
-  const centerX = Math.floor(imageData.width / 2 - left);
-  const centerY = Math.floor(imageData.height / 2 - top);
+const PngType = 'image/png';
+const PngDataURLHeadLength = `data:${PngType};base64,`.length;
 
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
+export function createImageFromLayer(layer, center) {
+  const ctx = layer.getContext();
+  const imageData = ctx.getImageData(0, 0, layer.width(), layer.height());
+  const boundingBox = getBoundingBox(imageData);
 
-  const ctx = canvas.getContext('2d');
-  ctx.putImageData(imageData, -left, -top, left, top, width, height);
-  const [type, data] = canvas.toDataURL().slice(5).split(';base64,');
+  const dataUrl = layer.toDataURL({
+    ...boundingBox,
+    mimeType: PngType,
+  });
+  const data = dataUrl.slice(PngDataURLHeadLength);
 
-  return { type, data, width, height, centerX, centerY };
+  const centerX = center.x - boundingBox.x;
+  const centerY = center.y - boundingBox.y;
+  const width = boundingBox.width;
+  const height = boundingBox.height;
+  return { data, centerX, centerY, width, height };
 }

@@ -1,9 +1,17 @@
-.tool-box-wrapper {
+:root {
+  --paint-tools-box-width: 6rem;
+}
+
+.tools-box-wrapper {
   display: flex;
-  width: 7rem;
+  width: var(--paint-tools-box-width);
   flex-flow: wrap;
   justify-content: space-between;
   align-content: flex-start;
+}
+
+.small {
+  width: 3rem;
 }
 
 .tool-button {
@@ -19,7 +27,7 @@
 }
 
 .tool-button.selected {
-  background: var(--motion-primary);
+  background: var(--theme-primary);
 }
 
 .tool-icon {

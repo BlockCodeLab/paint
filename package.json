@@ -1,19 +1,14 @@
 {
-  "name": "@blockcode/pixel-paint",
-  "module": "dist/index.js",
+  "name": "@blockcode/paint",
+  "private": "true",
+  "version": "1.0.0",
   "type": "module",
-  "scripts": {
-    "build": "bun-build",
-    "dev": "bun-build --watch ./src"
+  "module": "./dist/index.js",
+  "dependencies": {
+    "@preact/signals": "^1.3.0",
+    "preact": "^10.25.0"
   },
   "devDependencies": {
-    "bun-types": "latest",
-    "bun-loader-css": "github:kankungyip/bun-loader-css",
-    "bun-loader-yaml": "github:kankungyip/bun-loader-yaml"
-  },
-  "dependencies": {
-    "preact": "^10.18.1",
-    "@blockcode/core": "workspace:*",
-    "@blockcode/ui": "workspace:*"
+    "@types/bun": "latest"
   }
 }

@@ -1,13 +1,3 @@
-# @blockcode/pixel-paint
+# 像素风格画图组件
 
-To install dependencies:
-
-```bash
-bun install
-```
-
-To development:
-
-```bash
-bun run dev
-```
+基于 Konva 的像素风格画图组件，支持画笔、橡皮擦、直线、矩形、圆形、文字等工具。

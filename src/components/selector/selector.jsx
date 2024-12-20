@@ -1,294 +1,305 @@
-import { useState } from 'preact/hooks';
-import { useLocale, useLayout, useEditor } from '@blockcode/core';
-import { IconSelector, ActionButton } from '@blockcode/ui';
-import { uploadImage, loadImageFromURL } from '../../lib/load-image';
-import uid from '../../lib/uid';
+import { useCallback, useMemo } from 'preact/hooks';
+import { nanoid } from '@blockcode/utils';
+import {
+  useTranslator,
+  useProjectContext,
+  translate,
+  setAlert,
+  delAlert,
+  openAsset,
+  addAsset,
+  delAsset,
+} from '@blockcode/core';
+import { loadImageFromFile, BlankImageData } from '../../lib/load-image';
+import { EditorModes } from '../../lib/editor-mode';
 
+import { Text, IconSelector, ActionButton } from '@blockcode/core';
 import styles from './selector.module.css';
-import spriteIcon from './icon-sprite.svg';
-import backdropIcon from './icon-backdrop.svg';
-import surpriseIcon from './icon-surprise.svg';
-import searchIcon from './icon-search.svg';
-import paintIcon from './icon-paint.svg';
-import fileUploadIcon from './icon-file-upload.svg';
 
-export default function Selector({ mode, imageList, imageIndex, onSetupLibrary }) {
-  const [imagesLibrary, setImagesLibrary] = useState(false);
-  const [costumesLibrary, setCostumesLibrary] = useState(false);
-  const [backdropsLibrary, setBackdropsLibrary] = useState(false);
+import costumeIcon from './icons/icon-costume.svg';
+import backdropIcon from './icons/icon-backdrop.svg';
+import searchIcon from './icons/icon-search.svg';
+import paintIcon from './icons/icon-paint.svg';
+import surpriseIcon from './icons/icon-surprise.svg';
+import fileUploadIcon from './icons/icon-file-upload.svg';
+import { batch, useComputed, useSignalEffect } from '@preact/signals';
 
-  const { getText } = useLocale();
-  const { createAlert, removeAlert } = useLayout();
-  const { addAsset, deleteAsset, modifyFile } = useEditor();
+const MoreButtonTooltips = {
+  [EditorModes.Image]: (
+    <Text
+      id="paint.actionButton.image"
+      defaultMessage="Choose a Image"
+    />
+  ),
+  [EditorModes.Costume]: (
+    <Text
+      id="paint.actionButton.costume"
+      defaultMessage="Choose a Costume"
+    />
+  ),
+  [EditorModes.Backdrop]: (
+    <Text
+      id="paint.actionButton.backdrop"
+      defaultMessage="Choose a Backdrop"
+    />
+  ),
+};
 
-  const imageIdList = imageList.map((image) => image.id);
+const UploadTooltips = {
+  [EditorModes.Image]: (
+    <Text
+      id="paint.actionButton.upload"
+      defaultMessage="Upload Image"
+    />
+  ),
+  [EditorModes.Costume]: (
+    <Text
+      id="paint.actionButton.uploadCostume"
+      defaultMessage="Upload Costume"
+    />
+  ),
+  [EditorModes.Backdrop]: (
+    <Text
+      id="paint.actionButton.uploadBackdrop"
+      defaultMessage="Upload Backdrop"
+    />
+  ),
+};
 
-  const { ImagesLibrary, BackdropsLibrary, CostumesLibrary } = onSetupLibrary();
+const getImageName = (mode, translator) => {
+  switch (mode) {
+    case EditorModes.Image:
+      return translate('paint.painter.image', 'Image', translator).toLowerCase();
+    case EditorModes.Costume:
+      return translate('paint.painter.costume', 'Costume', translator).toLowerCase();
+    case EditorModes.Backdrop:
+      return translate('paint.painter.backdrop', 'Backdrop', translator).toLowerCase();
+  }
+};
 
-  const handleShowLibrary = () => {
-    if (mode === 'costume') {
-      setImagesLibrary(false);
-      setCostumesLibrary(true);
-      setBackdropsLibrary(false);
-      return;
-    }
-    if (mode === 'backdrop') {
-      setImagesLibrary(false);
-      setCostumesLibrary(false);
-      setBackdropsLibrary(true);
-      return;
-    }
-    setImagesLibrary(true);
-    setCostumesLibrary(false);
-    setBackdropsLibrary(false);
-  };
+const getImageIcon = (image) => `data:${image.type};base64,${image.data}`;
 
-  const handleCloseLibrary = () => {
-    setImagesLibrary(false);
-    setCostumesLibrary(false);
-    setBackdropsLibrary(false);
-  };
+export function Selector({ mode, maxSize, onImagesFilter, onShowLibrary, onSurprise, onChange, onDelete }) {
+  const translator = useTranslator();
 
-  const handleSelectAsset = async ({ tags, ...asset }) => {
-    const assetId = uid();
-    createAlert('importing', { id: assetId });
+  const { assets, assetId, modified } = useProjectContext();
 
-    const image = await loadImageFromURL(`./assets/${asset.id}.png`);
-    addAsset({
-      ...asset,
-      id: assetId,
-      type: 'image/png',
-      data: image.dataset.data,
-      width: image.width,
-      height: image.height,
-    });
-    imageIdList.push(assetId);
-    removeAlert(assetId);
+  const images = useMemo(
+    () => assets.value.filter((res) => /^image\//.test(res.type) && onImagesFilter && onImagesFilter(res)),
+    [modified.value, onImagesFilter],
+  );
 
-    modifyFile({
-      assets: imageIdList,
-      frame: imageIdList.length - 1,
-    });
-  };
+  const handleSelect = useCallback(
+    (i) => {
+      batch(async () => {
+        openAsset(images[i].id);
+        if (onChange) {
+          onChange(images[i].id);
+        }
+      });
+    },
+    [images, onChange],
+  );
 
-  const handleSurprise = () => {
-    if (mode === 'costume') {
-      handleSelectAsset(CostumesLibrary.surprise());
-      return;
-    }
-    if (mode === 'backdrop') {
-      handleSelectAsset(BackdropsLibrary.surprise());
-      return;
-    }
-    handleSelectAsset(ImagesLibrary.surprise());
-  };
-
-  const getTextByMode = (defaultText, costumeText, backdropText) => {
-    if (mode === 'costume') return costumeText;
-    if (mode === 'backdrop') return backdropText;
-    return defaultText;
-  };
-
-  const getImageIcon = (image) => `data:${image.type};base64,${image.data}`;
-
-  const handleSelect = (index) => {
-    modifyFile({ frame: index });
-  };
-
-  const handleUploadFile = () => {
+  const handleUploadFile = useCallback(() => {
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = 'image/*';
     fileInput.multiple = true;
     fileInput.click();
-    fileInput.addEventListener('change', async ({ target }) => {
-      const alertId = uid();
-      createAlert('importing', { id: alertId });
+    fileInput.addEventListener('change', (e) => {
+      const alertId = nanoid();
+      setAlert('importing', { id: alertId });
 
-      for (const file of target.files) {
-        const imageId = uid();
-        const imageName = file.name.slice(0, file.name.lastIndexOf('.'));
-        let image = await uploadImage(file);
-        if (!image) {
-          createAlert(
-            {
-              message: getText('pixelPaint.actionButton.uploadError', 'Upload "{file}" failed.', { file: file.name }),
-            },
-            2000,
-          );
-          image = {
-            dataset: {
-              data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAAtJREFUGFdjYAACAAAFAAGq1chRAAAAAElFTkSuQmCC',
-            },
-            width: 1,
-            height: 1,
-          };
+      let image, imageId, imageName;
+      batch(async () => {
+        for (const file of e.target.files) {
+          imageId = nanoid();
+          imageName = file.name.slice(0, file.name.lastIndexOf('.'));
+          image = await loadImageFromFile(file, maxSize);
+          if (!image) {
+            setAlert(
+              {
+                message: (
+                  <Text
+                    id="paint.actionButton.uploadError"
+                    defaultMessage='Upload "{file}" failed.'
+                    file={file.name}
+                  />
+                ),
+              },
+              2000,
+            );
+            image = {
+              dataset: {
+                data: BlankImageData,
+              },
+              width: 1,
+              height: 1,
+            };
+          }
+          addAsset({
+            id: imageId,
+            type: 'image/png',
+            name: imageName,
+            data: image.dataset.data,
+            width: image.width,
+            height: image.height,
+            centerX: Math.floor(image.width / 2),
+            centerY: Math.floor(image.height / 2),
+          });
+          if (onChange) {
+            onChange(imageId);
+          }
         }
-        addAsset({
-          id: imageId,
-          type: 'image/png',
-          name: imageName,
-          data: image.dataset.data,
-          width: image.width,
-          height: image.height,
-          centerX: Math.floor(image.width / 2),
-          centerY: Math.floor(image.height / 2),
-        });
-        imageIdList.push(imageId);
-      }
-      removeAlert(alertId);
-
-      modifyFile({
-        assets: imageIdList,
-        frame: imageIdList.length - 1,
       });
-    });
-  };
 
-  const handlePaintImage = () => {
-    const imageId = uid();
-    addAsset({
-      id: imageId,
-      type: 'image/png',
-      name: getText(`pixelPaint.painter.${mode}`, mode),
-      data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAAtJREFUGFdjYAACAAAFAAGq1chRAAAAAElFTkSuQmCC',
-      width: 1,
-      height: 1,
-      centerX: 1,
-      centerY: 1,
+      delAlert(alertId);
     });
-    imageIdList.push(imageId);
-    modifyFile({
-      assets: imageIdList,
-      frame: imageIdList.length - 1,
-    });
-  };
+  }, [onChange]);
 
-  const handleDeleteImage = (index) => {
-    deleteAsset(imageIdList[index]);
-    imageIdList.splice(index, 1);
-    modifyFile({
-      assets: imageIdList,
-      frame: imageIndex === 0 ? 0 : index > imageIndex ? imageIndex : imageIndex - 1,
+  const handlePaintImage = useCallback(() => {
+    const imageId = nanoid();
+    batch(() => {
+      addAsset({
+        id: imageId,
+        type: 'image/png',
+        name: getImageName(mode, translator),
+        data: BlankImageData,
+        width: 1,
+        height: 1,
+        centerX: 1,
+        centerY: 1,
+      });
+      if (onChange) {
+        onChange(imageId);
+      }
     });
-  };
+  }, [onChange]);
 
-  const handleDuplicateImage = (index) => {
-    const image = imageList[index];
-    const imageId = uid();
-    addAsset({
-      ...image,
-      id: imageId,
-    });
-    imageIdList.push(imageId);
-    modifyFile({
-      assets: imageIdList,
-      frame: imageIdList.length - 1,
-    });
-  };
+  const handleDeleteImage = useCallback(
+    (i) => {
+      batch(() => {
+        delAsset(images[i].id);
+        if (onDelete) {
+          onDelete(images[i].id);
+        }
+      });
+    },
+    [images, onDelete],
+  );
+
+  const wrapDeleteImage = useCallback((i) => () => handleDeleteImage(i), [handleDeleteImage]);
+
+  const wrapDuplicateImage = useCallback(
+    (i) => () => {
+      const image = images[i];
+      const imageId = nanoid();
+      addAsset({
+        ...image,
+        id: imageId,
+      });
+      if (onChange) {
+        onChange(imageId);
+      }
+    },
+    [images, onChange],
+  );
 
   return (
     <div className={styles.selectorWrapper}>
       <IconSelector
         displayOrder
-        id="paint-selector"
+        id="doodle-selector"
         className={styles.selectorItemsWrapper}
-        items={imageList.map((image, index) => ({
+        items={images.map((image, i) => ({
           ...image,
           details: `${image.width}×${image.height}`,
           icon: getImageIcon(image),
-          order: index,
+          order: i,
           className: styles.selectorItem,
           contextMenu: [
             [
               {
-                label: getText('pixelPaint.contextMenu.duplicate', 'duplicate'),
-                onClick: () => handleDuplicateImage(index),
+                label: (
+                  <Text
+                    id="paint.contextMenu.duplicate"
+                    defaultMessage="duplicate"
+                  />
+                ),
+                onClick: wrapDuplicateImage(i),
               },
               {
-                label: getText('pixelPaint.contextMenu.export', 'export'),
+                label: (
+                  <Text
+                    id="paint.contextMenu.export"
+                    defaultMessage="export"
+                  />
+                ),
                 disabled: true,
               },
             ],
             [
               {
-                label: getText('pixelPaint.contextMenu.delete', 'delete'),
+                label: (
+                  <Text
+                    id="paint.contextMenu.delete"
+                    defaultMessage="delete"
+                  />
+                ),
                 className: styles.deleteMenuItem,
-                disabled: imageList.length <= 1,
-                onClick: () => handleDeleteImage(index),
+                disabled: images.length <= 1,
+                onClick: wrapDeleteImage(i),
               },
             ],
           ],
         }))}
-        selectedIndex={imageIndex}
+        selectedId={assetId.value}
         onSelect={handleSelect}
-        onDelete={imageList.length > 1 && handleDeleteImage}
+        onDelete={images.length > 1 && handleDeleteImage}
       />
 
       <div className={styles.addButtonWrapper}>
         <ActionButton
           tooltipPlacement="right"
           className={styles.addButton}
-          icon={mode === 'costume' ? spriteIcon : backdropIcon}
-          tooltip={getTextByMode(
-            getText('pixelPaint.actionButton.image', 'Choose a Image'),
-            getText('pixelPaint.actionButton.costume', 'Choose a Costume'),
-            getText('pixelPaint.actionButton.backdrop', 'Choose a Backdrop'),
-          )}
-          onClick={handleShowLibrary}
+          icon={mode === EditorModes.Costume ? costumeIcon : backdropIcon}
+          tooltip={MoreButtonTooltips[mode]}
+          onClick={onShowLibrary}
           moreButtons={[
             {
               icon: fileUploadIcon,
-              tooltip: getTextByMode(
-                getText('pixelPaint.actionButton.upload', 'Upload Image'),
-                getText('pixelPaint.actionButton.uploadCostume', 'Upload Costume'),
-                getText('pixelPaint.actionButton.uploadBackdrop', 'Upload Backdrop'),
-              ),
+              tooltip: UploadTooltips[mode],
               onClick: handleUploadFile,
             },
             {
               icon: surpriseIcon,
-              tooltip: getText('pixelPaint.actionButton.surprise', 'Surprise'),
-              onClick: handleSurprise,
+              tooltip: (
+                <Text
+                  id="paint.actionButton.surprise"
+                  defaultMessage="Surprise"
+                />
+              ),
+              onClick: onSurprise,
             },
             {
               icon: paintIcon,
-              tooltip: getText('pixelPaint.actionButton.paint', 'Paint'),
+              tooltip: (
+                <Text
+                  id="paint.actionButton.paint"
+                  defaultMessage="Paint"
+                />
+              ),
               onClick: handlePaintImage,
             },
             {
               icon: searchIcon,
-              tooltip: getTextByMode(
-                getText('pixelPaint.actionButton.image', 'Choose a Image'),
-                getText('pixelPaint.actionButton.costume', 'Choose a Costume'),
-                getText('pixelPaint.actionButton.backdrop', 'Choose a Backdrop'),
-              ),
-              onClick: handleShowLibrary,
+              tooltip: MoreButtonTooltips[mode],
+              onClick: onShowLibrary,
             },
           ]}
         />
       </div>
-
-      {imagesLibrary && ImagesLibrary && (
-        <ImagesLibrary
-          onClose={handleCloseLibrary}
-          onSelect={handleSelectAsset}
-        />
-      )}
-
-      {costumesLibrary && CostumesLibrary && (
-        <CostumesLibrary
-          onClose={handleCloseLibrary}
-          onSelect={handleSelectAsset}
-        />
-      )}
-
-      {backdropsLibrary && BackdropsLibrary && (
-        <BackdropsLibrary
-          onClose={handleCloseLibrary}
-          onSelect={handleSelectAsset}
-        />
-      )}
     </div>
   );
 }

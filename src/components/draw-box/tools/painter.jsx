@@ -73,15 +73,11 @@ export default function Painter({ mode, maxSize }) {
   // 选择新的资源时重置
   useEffect(() => {
     batch(() => {
+      undoStack.value.length = 0;
+      redoStack.value.length = 0;
       toolMode.value = null;
-      undoStack.value = null;
-      redoStack.value = null;
-      undoStack.value = [];
-      redoStack.value = [];
-      if (asset.value) {
-        undoStack.value.push(Object.assign({}, asset.value));
-      }
     });
+    return () => {};
   }, [assetId.value]);
 
   const outlineDisabled = useComputed(
@@ -145,40 +141,28 @@ export default function Painter({ mode, maxSize }) {
 
   const handleFontChange = useCallback((val) => (font.value = val), []);
 
-  const handleDrawSizeChange = useCallback((size) => {
-    smallToolsBox.value = smallToolsBox.value ? size.width < 390 : size.width < 340;
-  }, []);
-
   // 撤销和重做
-  const handleChange = useCallback((image) => {
+  const handleChange = (data) => {
+    if (!data) return;
     batch(() => {
       if (undoStack.value.length > UNDO_MAX_LENGTH) {
-        undoStack.value.shift();
+        undoStack.shift();
       }
-      if (image) {
-        redoStack.value.length = 0;
-        undoStack.value.push(image);
-        setAsset(image);
-      }
+      undoStack.value.push(data);
+      redoStack.value.length = 0;
     });
-  }, []);
-
+  };
   const handleUndo = useCallback(() => {
     batch(() => {
-      toolMode.value = null;
-      let image = undoStack.value.pop();
-      redoStack.value.push(image);
-      image = undoStack.value[undoStack.value.length - 1];
-      setAsset(image);
+      const data = undoStack.value.pop();
+      redoStack.value.push(data);
     });
   }, []);
 
   const handleRedo = useCallback(() => {
     batch(() => {
-      toolMode.value = null;
-      const image = redoStack.value.pop();
-      undoStack.value.push(image);
-      setAsset(image);
+      const data = redoStack.value.pop();
+      undoStack.value.push(data);
     });
   }, []);
 
@@ -389,8 +373,10 @@ export default function Painter({ mode, maxSize }) {
               outlineColor: outlineColor.value,
               onPickColor: handlePickColor,
             }}
-            onSizeChange={handleDrawSizeChange}
-            onChange={handleChange}
+            onSizeChange={useCallback(
+              (size) => (smallToolsBox.value = smallToolsBox.value ? size.width < 390 : size.width < 340),
+              [],
+            )}
           />
         </div>
       </div>

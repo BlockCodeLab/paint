@@ -1,407 +1,373 @@
-import { useRef, useEffect, useState } from 'preact/hooks';
-import { classNames } from '@blockcode/ui';
-import { Point } from '../../lib/point';
-import { Color } from '../../lib/color';
-import { loadImageFromDataURL } from '../../lib/load-image';
-
+import { useEffect, useRef, useCallback } from 'preact/hooks';
+import { useSignal } from '@preact/signals';
+import { classNames, Konva, sleepMs } from '@blockcode/utils';
+import { useProjectContext } from '@blockcode/core';
+import { Keys } from '@blockcode/core/io';
+import { loadImageFromAsset } from '../../lib/load-image';
+import { createImageFromLayer } from '../../lib/create-image';
+import { PaintTools } from '../tools-box/tools-box';
 import styles from './draw-box.module.css';
+
+import pen from './tools/pen';
+import eraser from './tools/eraser';
+import fill from './tools/fill';
+import text from './tools/text';
+import line from './tools/line';
+import curve from './tools/curve';
+import rectangle from './tools/rectangle';
+import circle from './tools/circle';
+import isogon from './tools/isogon';
+import polygon from './tools/polygon';
+import selector from './tools/selector';
+import center from './tools/center';
+import colorPicker from './tools/color-picker';
+
 import centerIcon from '../painter/icons/icon-center.svg';
 
-export default function DrawBox({ image: defaultImage, selectedTool, zoom, undoList, onChange, onChangeColor }) {
-  const ref = useRef();
-  const [context, setContext] = useState();
+const Tools = {
+  [PaintTools.Pen]: pen,
+  [PaintTools.Eraser]: eraser,
+  [PaintTools.Fill]: fill,
+  [PaintTools.Text]: text,
+  [PaintTools.Line]: line,
+  [PaintTools.Curve]: curve,
+  [PaintTools.Rectangle]: rectangle,
+  [PaintTools.Circle]: circle,
+  [PaintTools.Isogon]: isogon,
+  [PaintTools.Polygon]: polygon,
+  [PaintTools.Selector]: selector,
+  [PaintTools.Center]: center,
+  [PaintTools.ColorPicker]: colorPicker,
+  [PaintTools.OutlineColorPicker]: colorPicker,
+};
 
-  const centerX = (Point.DrawWidth - defaultImage.width) / 2 + defaultImage.centerX;
-  const centerY = (Point.DrawHeight - defaultImage.height) / 2 + defaultImage.centerY;
+export function DrawBox({ zoom, maxSize, toolOptions, onSizeChange, onChange }) {
+  const ref = useRef(null);
 
-  const fillColor = selectedTool.fillColor || new Color([0, 0, 0]);
-  const outlineColor = selectedTool.outlineColor || new Color([0, 0, 0]);
+  const { asset, assetId, modified } = useProjectContext();
 
-  let drawing, imageData;
+  const tool = useSignal(null);
 
-  const getImageData = () => {
-    imageData = context.getImageData(0, 0, Point.DrawWidth, Point.DrawHeight);
-  };
+  // 更新图形数据
+  const updateImage = useCallback(() => {
+    if (tool.value?.type === PaintTools.Center) return;
 
-  const putImageData = (x = 0, y = 0) => {
-    context.clearRect(0, 0, Point.DrawWidth, Point.DrawHeight);
-    context.putImageData(imageData, x, y);
-  };
+    if (ref.drawLayer.children.length <= 2) return;
 
-  const saveImageData = () => {
-    onChange({ data: imageData });
-    imageData = null;
-  };
+    const pos = ref.image.position();
+    pos.x += asset.value.centerX;
+    pos.y += asset.value.centerY;
 
-  const restoreImageData = () => {
-    let canvas = new OffscreenCanvas(Point.DrawWidth, Point.DrawHeight);
-    let ctx = canvas.getContext('2d', { willReadFrequently: true });
-    ctx.imageSmoothingEnabled = false;
-    ctx.putImageData(undoList.at(-1), 0, 0);
-    imageData = ctx.getImageData(0, 0, Point.DrawWidth, Point.DrawHeight);
-    ctx = null;
-    canvas = null;
-  };
+    const image = createImageFromLayer(ref.drawLayer, pos);
+    onChange(image);
+  }, []);
 
-  const pixel = (point, rgba) => {
-    if (point.invalid) return;
-    const index = point.index;
-    imageData.data[index + 0] = rgba.r;
-    imageData.data[index + 1] = rgba.g;
-    imageData.data[index + 2] = rgba.b;
-    imageData.data[index + 3] = rgba.a === 0 ? 0 : 255;
-  };
+  // 更新图形中心
+  const updateCenter = useCallback((pos) => {
+    const imagePos = ref.image.position();
+    const centerX = pos.x - imagePos.x;
+    const centerY = pos.y - imagePos.y;
+    onChange({ centerX, centerY });
+  });
 
-  // for draw circle
-  const pixel8 = (point0, dx, dy, rgba) => {
-    pixel(new Point(point0.x - dx, point0.y + dy), rgba);
-    pixel(new Point(point0.x + dx, point0.y + dy), rgba);
-    pixel(new Point(point0.x + dx, point0.y - dy), rgba);
-    pixel(new Point(point0.x - dx, point0.y - dy), rgba);
-    pixel(new Point(point0.x - dy, point0.y + dx), rgba);
-    pixel(new Point(point0.x + dy, point0.y + dx), rgba);
-    pixel(new Point(point0.x + dy, point0.y - dx), rgba);
-    pixel(new Point(point0.x - dy, point0.y - dx), rgba);
-  };
-
-  const pixelLine = (point1, point2, rgba) => {
-    const dx = Math.abs(point2.x - point1.x);
-    const dy = Math.abs(point2.y - point1.y);
-    const sx = point1.x < point2.x ? 1 : -1;
-    const sy = point1.y < point2.y ? 1 : -1;
-    const point = new Point(point1.x, point1.y);
-
-    let err = dx - dy;
-    while (true) {
-      pixel(point, rgba);
-      if (point.x === point2.x && point.y === point2.y) break;
-
-      const e2 = 2 * err;
-      if (e2 > -dy) {
-        err -= dy;
-        point.x += sx;
-      }
-      if (e2 < dx) {
-        err += dx;
-        point.y += sy;
-      }
-    }
-  };
-
-  const pixelRectangle = (point1, point3, options) => {
-    let x1 = point1.x;
-    let x3 = point3.x;
-    let y1 = point1.y;
-    let y3 = point3.y;
-
-    if (options.outline) {
-      const point2 = new Point(x3, y1);
-      const point4 = new Point(x1, y3);
-      pixelLine(point1, point2, options.outline);
-      pixelLine(point3, point4, options.outline);
-      pixelLine(point2, point3, options.outline);
-      pixelLine(point4, point1, options.outline);
-      x1 += 1;
-      x3 -= 1;
-      y1 += 1;
-      y3 -= 1;
-    }
-    if (options.fill) {
-      for (let y = y1; y <= y3; y++) {
-        pixelLine(new Point(x1, y), new Point(x3, y), options.fill);
-      }
-    }
-  };
-
-  const pixelCircle = (point0, radius, options) => {
-    let x = 0;
-    let y = radius;
-    let d = 3 - 2 * radius;
-    while (x <= y) {
-      if (options.fill) {
-        for (let yi = x; yi <= y; yi++) {
-          pixel8(point0, x, yi, options.fill);
-        }
-      }
-      if (options.outline) {
-        pixel8(point0, x, y, options.outline);
-      }
-      if (d < 0) {
-        d = d + 4 * x + 6;
-      } else {
-        d = d + 4 * (x - y);
-        y--;
-      }
-      x++;
-    }
-  };
-
-  const pen = (point) => {
-    if (point.invalid) return;
-
-    const options = {
-      clear: fillColor.clear,
-      fill: fillColor.rgb,
-      outline: false,
-    };
-    if (options.clear || selectedTool.type === 'eraser') {
-      options.fill.a = 0;
-      if (!drawing) {
-        options.fill = { r: 255, g: 255, b: 255 };
-        options.outline = { r: 138, g: 187, b: 255 };
-      }
-    }
-    if (selectedTool.penSize === 1) {
-      pixel(point, !drawing && (options.clear || selectedTool.type === 'eraser') ? options.outline : options.fill);
-    } else if (selectedTool.penSize === 3) {
-      pixelRectangle(new Point(point.x - 1, point.y - 1), new Point(point.x + 1, point.y + 1), options);
-    } else if (selectedTool.penSize < 5) {
-      const d = selectedTool.penSize / 2;
-      pixelRectangle(new Point(point.x - d, point.y - d), new Point(point.x + d - 1, point.y + d - 1), options);
+  // 创建图形操作控制器
+  const createSelector = useCallback(() => {
+    const shapes = ref.stage.find('.selector');
+    if (shapes.length > 0) {
+      ref.transformer.zIndex(ref.drawLayer.children.length - 1);
+      ref.transformer.nodes(shapes);
     } else {
-      pixelCircle(point, Math.floor((selectedTool.penSize - 1) / 2), options);
+      updateImage();
     }
-  };
+  }, []);
 
-  const fill = (point) => {
-    if (point.invalid) return;
-    const repalceColor = new Color(Array.from(imageData.data.slice(point.index, point.index + 4)));
-
-    const points = [];
-    const checkPoint = (point) => {
-      if (point.invalid) return;
-      if (!points.includes(point.index)) {
-        const color = new Color(Array.from(imageData.data.slice(point.index, point.index + 4)));
-        if (color.equals(repalceColor) && color.notEquals(fillColor)) {
-          points.push(point.index);
-        }
-      }
-    };
-    checkPoint(point);
-
-    while (points.length > 0) {
-      const index = points.shift();
-      imageData.data[index + 0] = fillColor.rgb.r;
-      imageData.data[index + 1] = fillColor.rgb.g;
-      imageData.data[index + 2] = fillColor.rgb.b;
-      imageData.data[index + 3] = fillColor.clear ? 0 : 255;
-
-      point = Point.from(index);
-      checkPoint(point.topPoint);
-      checkPoint(point.leftPoint);
-      checkPoint(point.rightPoint);
-      checkPoint(point.bottomPoint);
+  // 清理图形操作控制器
+  const clearSelector = useCallback(() => {
+    if (ref.transformer.nodes().length > 0) {
+      ref.transformer.nodes([]);
+      updateImage();
     }
-  };
+  }, []);
 
-  const handleMouseDown = (e) => {
-    e.preventDefault();
-    if (!ref.current) return;
-    drawing = true;
-
-    const rect = ref.current.getBoundingClientRect();
-    let x = e.clientX - rect.left;
-    let y = e.clientY - rect.top;
-    x = Math.floor((Point.DrawWidth * x) / ref.current.clientWidth);
-    y = Math.floor((Point.DrawHeight * y) / ref.current.clientHeight);
-
-    if (selectedTool.type === 'pen' || selectedTool.type === 'eraser' || selectedTool.type === 'fill') {
-      const point = new Point(x, y);
-      getImageData();
-      if (selectedTool.type === 'pen' || selectedTool.type === 'eraser') {
-        pen(point);
-      } else if (selectedTool.type === 'fill') {
-        fill(point);
-      }
-      putImageData();
-    } else if (selectedTool.type.startsWith('picker-')) {
-      e.stopPropagation();
-    } else if (selectedTool.type.startsWith('center')) {
-      // const centerX = Math.floor(x - (Point.DrawWidth - defaultImage.width) / 2);
-      // const centerY = Math.floor(y - (Point.DrawHeight - defaultImage.height) / 2);
-      // onChange({ centerX, centerY });
-      const dx = Point.DrawWidth / 2 - x;
-      const dy = Point.DrawHeight / 2 - y;
-      putImageData(dx, dy);
-      getImageData();
+  // 清理可编辑图形
+  const clearDrawable = useCallback(() => {
+    ref.transformer.nodes([]);
+    for (let child of ref.drawLayer.children) {
+      if (child === ref.image || child instanceof Konva.Transformer) continue;
+      child.remove();
     }
+  }, []);
 
-    // mouse leave draw box
-    const mouseUp = () => {
-      if (drawing) {
-        drawing = false;
-        saveImageData();
-      }
-      document.removeEventListener('mouseup', mouseUp);
-    };
-    document.addEventListener('mouseup', mouseUp);
-  };
-
-  const handleMouseMove = (e) => {
-    e.preventDefault();
-    if (!ref.current) return;
-
-    if (selectedTool.type === 'center') return;
-
-    const rect = ref.current.getBoundingClientRect();
-    let x = e.clientX - rect.left;
-    let y = e.clientY - rect.top;
-    x = Math.floor((Point.DrawWidth * x) / ref.current.clientWidth);
-    y = Math.floor((Point.DrawHeight * y) / ref.current.clientHeight);
-
-    if (selectedTool.type === 'pen' || selectedTool.type === 'eraser') {
-      const point = new Point(x, y);
-      if (!drawing) {
-        restoreImageData();
-      } else {
-        getImageData();
-      }
-      pen(point);
-      putImageData();
-    } else if (selectedTool.type.startsWith('picker-')) {
-      // const [r, g, b, a] = context.getImageData(x, y, 1, 1).data;
+  // 键盘控制
+  const handleKeyDown = useCallback((e) => {
+    switch (e.code) {
+      case Keys.ESC:
+      case Keys.DELETE:
+      case Keys.BACKSPACE:
+        ref.painting = false;
+        tool.value?.cancel?.();
+        clearDrawable();
+        return;
+      case Keys.RETURN:
+      case Keys.ENTER:
+        clearSelector();
+        return;
+      case Keys.LEFT:
+        ref.transformer.nodes().forEach((node) => node.x(node.x() - 1));
+        return;
+      case Keys.RIGHT:
+        ref.transformer.nodes().forEach((node) => node.x(node.x() + 1));
+        return;
+      case Keys.UP:
+        ref.transformer.nodes().forEach((node) => node.y(node.y() - 1));
+        return;
+      case Keys.DOWN:
+        ref.transformer.nodes().forEach((node) => node.y(node.y() + 1));
+        return;
     }
-  };
+  }, []);
 
-  const handleMouseUp = (e) => {
-    e.preventDefault();
-    drawing = false;
+  // 放置原始图
+  useEffect(async () => {
+    if (!/image\//.test(asset.value?.type) || !ref.image) return;
 
-    if (selectedTool.type === 'center') {
-      saveImageData();
-      return;
-    }
+    const image = await loadImageFromAsset(asset.value);
+    ref.image.image(image);
+    ref.image.position({
+      x: ref.stage.width() / 2 - asset.value.centerX,
+      y: ref.stage.height() / 2 - asset.value.centerY,
+    });
+    // 清除之前的绘制
+    clearDrawable();
+  }, [assetId.value, modified.value]);
 
-    const rect = ref.current.getBoundingClientRect();
-    let x = e.clientX - rect.left;
-    let y = e.clientY - rect.top;
-    x = Math.floor((Point.DrawWidth * x) / ref.current.clientWidth);
-    y = Math.floor((Point.DrawHeight * y) / ref.current.clientHeight);
-
-    if (selectedTool.type.startsWith('picker-')) {
-      const [r, g, b, a] = context.getImageData(x, y, 1, 1).data;
-      if (a === 0) {
-        if (selectedTool.type === 'picker-fill') {
-          onChangeColor(new Color(fillColor.hsv, true));
-        }
-        if (selectedTool.type === 'picker-outline') {
-          onChangeColor(new Color(outlineColor.hsv, true));
-        }
-      } else {
-        onChangeColor(new Color({ r, g, b }).toHSVColor());
-      }
-      return;
-    }
-
-    saveImageData();
-
-    if (selectedTool.type === 'eraser') {
-      restoreImageData();
-      pen(new Point(x, y));
-      putImageData();
-    }
-  };
-
-  const handleMouseLeave = (e) => {
-    e.preventDefault();
-    if (!drawing) {
-      restoreImageData();
-      putImageData();
-    }
-  };
-
+  // 缩放画布
   useEffect(() => {
-    if (ref.current) {
-      const ctx = ref.current.getContext('2d', { willReadFrequently: true });
-      ctx.imageSmoothingEnabled = false;
-      setContext(ctx);
-    }
-  }, [ref]);
-
-  useEffect(() => {
-    if (ref.current) {
-      const drawBox = ref.current.parentElement.parentElement;
-
-      let left = (ref.current.clientWidth - drawBox.clientWidth) / 2;
-      let top = (ref.current.clientHeight - drawBox.clientHeight) / 2;
-      if (zoom > 2) {
-        const cw2 = drawBox.clientWidth / 2;
-        left = ((drawBox.scrollLeft + cw2) / drawBox.dataset.scrollWidth) * ref.current.clientWidth - cw2;
-        if (zoom > 4) {
-          const ch2 = drawBox.clientHeight / 2;
-          top = ((drawBox.scrollTop + ch2) / drawBox.dataset.scrollHeight) * ref.current.clientHeight - ch2;
-        }
-      }
-
-      drawBox.dataset.scrollWidth = ref.current.clientWidth;
-      drawBox.dataset.scrollHeight = ref.current.clientHeight;
-      drawBox.scroll({
-        top: top > 0 ? top : 0,
-        left: left > 0 ? left : 0,
-      });
-
-      const centerIcon = ref.current.nextSibling;
-      // centerIcon.style.top = `${centerY * zoom}px`;
-      // centerIcon.style.left = `${centerX * zoom}px`;
-      centerIcon.style.top = `${(zoom * Point.DrawHeight) / 2}px`;
-      centerIcon.style.left = `${(zoom * Point.DrawWidth) / 2}px`;
+    if (ref.stage) {
+      const { clientWidth, clientHeight, scrollLeft, scrollTop, scrollWidth, scrollHeight } = ref.current;
+      const clientCenter = {
+        top: clientHeight / 2,
+        left: clientWidth / 2,
+      };
+      const scrollOption = {
+        top: ((scrollTop + clientCenter.top) / scrollHeight) * (clientHeight * zoom) - clientCenter.top,
+        left: ((scrollLeft + clientCenter.left) / scrollWidth) * (clientWidth * zoom) - clientCenter.left,
+        behavior: 'instant',
+      };
+      ref.stage.content.style.zoom = zoom;
+      ref.current.scrollTo(scrollOption);
     }
   }, [zoom]);
 
-  if (context && undoList.length === 0) {
-    if (defaultImage) {
-      loadImageFromDataURL(defaultImage).then((image) => {
-        // const dx = (Point.DrawWidth - defaultImage.width) / 2;
-        // const dy = (Point.DrawHeight - defaultImage.height) / 2;
-        const dx = Point.DrawWidth / 2 - defaultImage.centerX;
-        const dy = Point.DrawHeight / 2 - defaultImage.centerY;
-        context.clearRect(0, 0, Point.DrawWidth, Point.DrawHeight);
-        context.drawImage(image, dx, dy);
-        getImageData();
-        saveImageData();
-      });
-    } else {
-      getImageData();
-      saveImageData();
+  // 切换绘画工具或模式
+  useEffect(() => {
+    if (ref.drawLayer) {
+      if (tool.value?.type !== toolOptions.type) {
+        if (ref.painting) {
+          ref.painting = false;
+          tool.value?.cancel?.();
+          updateImage();
+        }
+        clearSelector();
+        tool.value = Tools[toolOptions.type];
+        if (tool.value) {
+          tool.value.type = toolOptions.type;
+        }
+      }
+      // 重新设置图形中心
+      if (toolOptions.type === PaintTools.Center) {
+        toolOptions.onCenterChange = updateCenter;
+      }
+      tool.value?.setup?.(ref.drawLayer, toolOptions);
     }
-  }
+  }, [toolOptions]);
 
-  if (context && undoList.length > 0) {
-    restoreImageData();
-    putImageData();
-  }
+  useEffect(() => {
+    if (ref.current) {
+      const { clientWidth, clientHeight } = ref.current;
+      const stageWidth = Math.max(maxSize.width, clientWidth);
+      const stageHeight = Math.max(maxSize.height, clientHeight);
+      Konva.pixelRatio = 1;
+      ref.stage = new Konva.Stage({
+        container: ref.current,
+        width: stageWidth,
+        height: stageWidth,
+      });
+      onSizeChange({ width: clientWidth, height: clientHeight });
 
+      // 层管理
+      const maskLayer = new Konva.Layer({ listening: false }); // 遮罩层
+      ref.drawLayer = new Konva.Layer(); // 绘图层
+      ref.stage.add(ref.drawLayer, maskLayer);
+
+      // 无效绘图区（超出 maxSize)遮罩
+      const maskWidth = (stageWidth - maxSize.width) / 2;
+      const maskHeight = (stageHeight - maxSize.height) / 2;
+      const topMask = new Konva.Rect({
+        x: 0,
+        y: 0,
+        width: stageWidth,
+        height: maskHeight,
+        fill: 'black',
+        opacity: 0.2,
+      });
+      const bottomMask = new Konva.Rect({
+        x: 0,
+        y: stageHeight - maskHeight,
+        width: clientWidth,
+        height: maskHeight,
+        fill: 'black',
+        opacity: 0.2,
+      });
+      const leftMask = new Konva.Rect({
+        x: 0,
+        y: maskHeight,
+        width: maskWidth,
+        height: maxSize.height,
+        fill: 'black',
+        opacity: 0.2,
+      });
+      const rightMask = new Konva.Rect({
+        x: stageWidth - maskWidth,
+        y: maskHeight,
+        width: maskWidth,
+        height: maxSize.height,
+        fill: 'black',
+        opacity: 0.2,
+      });
+      maskLayer.add(topMask, bottomMask, leftMask, rightMask);
+
+      // 绘图操作手柄
+      ref.transformer = new Konva.Transformer();
+      ref.drawLayer.add(ref.transformer);
+
+      // 原始图片
+      ref.image = new Konva.Image();
+      ref.drawLayer.add(ref.image);
+      if (asset.value) {
+        loadImageFromAsset(asset.value).then((image) => {
+          ref.image.image(image);
+          ref.image.position({
+            x: ref.stage.width() / 2 - asset.value.centerX,
+            y: ref.stage.height() / 2 - asset.value.centerY,
+          });
+        });
+      }
+
+      // 绘图
+      ref.painting = false;
+      ref.stage.on('mousedown touchstart', async (e) => {
+        if (ref.painting || e.target.name() === 'selector' || e.target.parent instanceof Konva.Transformer) {
+          return;
+        }
+        if (tool.value?.type === PaintTools.ColorPicker || tool.value?.type === PaintTools.OutlineColorPicker) {
+          e.evt.stopPropagation();
+        }
+        clearSelector();
+        await sleepMs(30);
+        if (tool.value) {
+          ref.painting = true;
+          tool.value.onBegin?.(e);
+        }
+      });
+      ref.stage.on('mousemove touchmove', (e) => {
+        if (ref.painting) {
+          e.evt.preventDefault();
+          tool.value.onDrawing?.(e);
+        }
+      });
+      ref.stage.on('mouseup touchend', async (e) => {
+        if (ref.painting) {
+          ref.painting = !!tool.value.onDone;
+          await tool.value.onEnd?.(e);
+          if (!tool.value.onDone) {
+            createSelector();
+          }
+        }
+      });
+      ref.stage.on('dblclick dbltap', async (e) => {
+        if (ref.painting) {
+          ref.painting = false;
+          await tool.value.onDone?.(e);
+          createSelector();
+        }
+      });
+      ref.stage.on('click tap', async (e) => {
+        if (ref.painting && tool.value?.type === PaintTools.Text) {
+          ref.painting = false;
+          await tool.value.onDone?.(e);
+          createSelector();
+        }
+      });
+      document.addEventListener('keydown', handleKeyDown);
+
+      // 缩放画板
+      ref.resizeObserver = new ResizeObserver(() => {
+        if (!ref.stage) return;
+
+        // 改变画布尺寸
+        const { clientWidth, clientHeight } = ref.current;
+        const stageWidth = Math.max(maxSize.width, clientWidth);
+        const stageHeight = Math.max(maxSize.height, clientHeight);
+        ref.stage.size({
+          width: stageWidth,
+          height: stageHeight,
+        });
+        onSizeChange({ width: clientWidth, height: clientHeight });
+
+        // 修正图形位置
+        ref.image.position({
+          x: stageWidth / 2 - asset.value.centerX,
+          y: stageHeight / 2 - asset.value.centerY,
+        });
+
+        // 修正遮罩
+        const maskWidth = (stageWidth - maxSize.width) / 2;
+        const maskHeight = (stageHeight - maxSize.height) / 2;
+        topMask.size({
+          width: stageWidth,
+          height: maskHeight,
+        });
+        bottomMask.setAttrs({
+          y: stageHeight - maskHeight,
+          width: stageWidth,
+          height: maskHeight,
+        });
+        leftMask.setAttrs({
+          y: maskHeight,
+          width: maskWidth,
+        });
+        rightMask.setAttrs({
+          x: stageWidth - maskWidth,
+          y: maskHeight,
+          width: maskWidth,
+        });
+      });
+      ref.resizeObserver.observe(ref.current);
+    }
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      ref.resizeObserver.unobserve(ref.current);
+      ref.stage.destroy();
+    };
+  }, [ref]);
   return (
     <div className={styles.drawBox}>
-      <div className={styles.drawCanvasWrapper}>
-        <canvas
-          ref={ref}
-          className={classNames(styles.drawCanvas, {
-            [styles.center]: selectedTool.type === 'center',
-            [styles.picker]: selectedTool.type.startsWith('picker-'),
-          })}
-          width={Point.DrawWidth}
-          height={Point.DrawHeight}
-          style={{
-            width: Point.DrawWidth * zoom,
-            height: Point.DrawHeight * zoom,
-          }}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseLeave}
-        />
-        <img
-          src={centerIcon}
-          className={classNames(styles.centerIcon, {
-            [styles.hidden]: selectedTool.type !== 'center',
-          })}
-          // style={{
-          //   top: `${centerY * zoom}px`,
-          //   left: `${centerX * zoom}px`,
-          // }}
-        />
-      </div>
+      <div
+        ref={ref}
+        className={classNames(styles.drawContainer, {
+          [styles.text]: tool.value?.type === PaintTools.Text,
+          [styles.center]: tool.value?.type === PaintTools.Center,
+          [styles.picker]:
+            tool.value?.type === PaintTools.ColorPicker || tool.value?.type === PaintTools.OutlineColorPicker,
+        })}
+      />
+      <img
+        src={centerIcon}
+        className={classNames(styles.centerIcon, {
+          [styles.hidden]: tool.value?.type !== PaintTools.Center,
+        })}
+      />
     </div>
   );
 }

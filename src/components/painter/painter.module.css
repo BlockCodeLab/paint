@@ -23,7 +23,11 @@
 .row-bottom {
   justify-content: space-between;
   margin-right: var(--space);
-  margin-left: calc(7em + var(--space));
+  margin-left: calc(var(--paint-tools-box-width) + var(--space));
+}
+
+.row-bottom > div {
+  display: inline-flex;
 }
 
 .row:last-child {
@@ -73,18 +77,21 @@
   padding: 0.375rem;
 }
 
-.text-button {
+.tile-map-button {
+  background: var(--theme-primary);
+  border: var(--theme-primary);
+  color: var(--ui-white);
   height: calc(2rem + 2px);
   padding: 0.375rem;
+}
+
+.button-left-icon {
+  margin-right: calc(var(--space));
 }
 
 .button-icon {
   margin: auto;
   width: 1.5rem;
-}
-
-.simple-group {
-  display: inline-flex;
 }
 
 .group-button {
@@ -113,7 +120,7 @@
 }
 
 .label-button.selected {
-  background: var(--motion-primary);
+  background: var(--theme-primary);
   color: var(--ui-white);
 }
 
@@ -128,4 +135,17 @@
   margin: 0 var(--space);
   border: 1px solid var(--ui-black-transparent);
   border-radius: calc(var(--space) / 2);
+}
+
+.font-selector {
+  align-self: center;
+  color: var(--text-primary);
+  min-width: 10rem;
+  min-height: 2rem;
+  overflow: auto;
+  max-height: 30vh;
+}
+
+.displayed-font-name {
+  font-size: 0.8rem;
 }
