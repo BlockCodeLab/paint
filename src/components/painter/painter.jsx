@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo } from 'preact/hooks';
 import { batch, useComputed, useSignal } from '@preact/signals';
 import { classNames, Color, MathUtils } from '@blockcode/utils';
-import { useTranslator, useProjectContext, translate, maybeTranslate, setAsset } from '@blockcode/core';
+import { useLocalesContext, useProjectContext, translate, maybeTranslate, setAsset } from '@blockcode/core';
 import { EditorModes } from '../../lib/editor-mode';
 
 import { Text, Label, BufferedInput, Button } from '@blockcode/core';
@@ -40,7 +40,7 @@ const getImageName = (mode, translator) => {
 };
 
 export default function Painter({ mode, maxSize }) {
-  const translator = useTranslator();
+  const { translator } = useLocalesContext();
 
   const { asset, assetId, modified } = useProjectContext();
 

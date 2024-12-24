@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'preact/hooks';
 import { nanoid } from '@blockcode/utils';
 import {
-  useTranslator,
+  useLocalesContext,
   useProjectContext,
   translate,
   setAlert,
@@ -80,7 +80,7 @@ const getImageName = (mode, translator) => {
 const getImageIcon = (image) => `data:${image.type};base64,${image.data}`;
 
 export function Selector({ mode, maxSize, onImagesFilter, onShowLibrary, onSurprise, onChange, onDelete }) {
-  const translator = useTranslator();
+  const { translator } = useLocalesContext();
 
   const { assets, assetId, modified } = useProjectContext();
 

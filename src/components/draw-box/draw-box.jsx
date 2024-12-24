@@ -1,8 +1,7 @@
 import { useEffect, useRef, useCallback } from 'preact/hooks';
 import { useSignal } from '@preact/signals';
 import { classNames, Konva, sleepMs } from '@blockcode/utils';
-import { useProjectContext } from '@blockcode/core';
-import { Keys } from '@blockcode/core/io';
+import { useProjectContext, Keys } from '@blockcode/core';
 import { loadImageFromAsset } from '../../lib/load-image';
 import { createImageFromLayer } from '../../lib/create-image';
 import { PaintTools } from '../tools-box/tools-box';
