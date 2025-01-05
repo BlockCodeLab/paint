@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'preact/hooks';
 import { useSignal } from '@preact/signals';
-import { classNames, Konva, sleepMs } from '@blockcode/utils';
+import { default as Konva } from 'konva';
+import { classNames, sleepMs } from '@blockcode/utils';
 import { useProjectContext, Keys } from '@blockcode/core';
 import { loadImageFromAsset } from '../../lib/load-image';
 import { createImageFromLayer } from '../../lib/create-image';
@@ -255,7 +256,7 @@ export function DrawBox({ zoom, maxSize, toolOptions, onSizeChange, onChange }) 
 
       // 绘图
       ref.painting = false;
-      ref.stage.on('mousedown touchstart', async (e) => {
+      ref.stage.on('pointerdown', async (e) => {
         if (ref.painting || e.target.name() === 'selector' || e.target.parent instanceof Konva.Transformer) {
           return;
         }
@@ -269,13 +270,13 @@ export function DrawBox({ zoom, maxSize, toolOptions, onSizeChange, onChange }) 
           tool.value.onBegin?.(e);
         }
       });
-      ref.stage.on('mousemove touchmove', (e) => {
+      ref.stage.on('pointermove', (e) => {
         if (ref.painting) {
           e.evt.preventDefault();
           tool.value.onDrawing?.(e);
         }
       });
-      ref.stage.on('mouseup touchend', async (e) => {
+      ref.stage.on('pointerup', async (e) => {
         if (ref.painting) {
           ref.painting = !!tool.value.onDone;
           await tool.value.onEnd?.(e);
@@ -284,14 +285,14 @@ export function DrawBox({ zoom, maxSize, toolOptions, onSizeChange, onChange }) 
           }
         }
       });
-      ref.stage.on('dblclick dbltap', async (e) => {
+      ref.stage.on('pointerdblclick', async (e) => {
         if (ref.painting) {
           ref.painting = false;
           await tool.value.onDone?.(e);
           createSelector();
         }
       });
-      ref.stage.on('click tap', async (e) => {
+      ref.stage.on('pointerclick', async (e) => {
         if (ref.painting && tool.value?.type === PaintTools.Text) {
           ref.painting = false;
           await tool.value.onDone?.(e);
@@ -348,6 +349,7 @@ export function DrawBox({ zoom, maxSize, toolOptions, onSizeChange, onChange }) 
       document.removeEventListener('keydown', handleKeyDown);
       ref.resizeObserver.unobserve(ref.current);
       ref.stage.destroy();
+      ref.stage = null;
     };
   }, [ref]);
   return (

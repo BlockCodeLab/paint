@@ -1,4 +1,4 @@
-import { Konva } from '@blockcode/utils';
+import { default as Konva } from 'konva';
 
 export default {
   setup(layer, options) {

@@ -1,4 +1,5 @@
-import { Konva, Color, sleepMs } from '@blockcode/utils';
+import { default as Konva } from 'konva';
+import { Color, sleepMs } from '@blockcode/utils';
 import { loadImageFromURL } from '../../../lib/load-image';
 
 export default {

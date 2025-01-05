@@ -1,5 +1,6 @@
-import { Konva, sleepMs } from '@blockcode/utils';
-import { themeColor } from '@blockcode/core';
+import { default as Konva } from 'konva';
+import { sleepMs } from '@blockcode/utils';
+import { themeColors } from '@blockcode/core';
 
 export default {
   setup(layer, options) {
@@ -48,7 +49,7 @@ export default {
       height: 1,
       dash: [5, 5],
       fill: 'transparent',
-      stroke: themeColor.ui.theme.highlight,
+      stroke: themeColors.ui.theme.highlight,
       strokeWidth: 1,
     });
     this.layer.add(this.poly);
