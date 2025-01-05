@@ -91,14 +91,14 @@ export function Selector({ mode, maxSize, onImagesFilter, onShowLibrary, onSurpr
 
   const handleSelect = useCallback(
     (i) => {
-      batch(async () => {
+      batch(() => {
         openAsset(images[i].id);
         if (onChange) {
           onChange(images[i].id);
         }
       });
     },
-    [images, onChange],
+    [images],
   );
 
   const handleUploadFile = useCallback(() => {
@@ -107,41 +107,45 @@ export function Selector({ mode, maxSize, onImagesFilter, onShowLibrary, onSurpr
     fileInput.accept = 'image/*';
     fileInput.multiple = true;
     fileInput.click();
-    fileInput.addEventListener('change', (e) => {
+    fileInput.addEventListener('change', async (e) => {
       const alertId = nanoid();
       setAlert('importing', { id: alertId });
 
-      let image, imageId, imageName;
-      batch(async () => {
-        for (const file of e.target.files) {
-          imageId = nanoid();
-          imageName = file.name.slice(0, file.name.lastIndexOf('.'));
-          image = await loadImageFromFile(file, maxSize);
-          if (!image) {
-            setAlert(
-              {
-                message: (
-                  <Text
-                    id="paint.actionButton.uploadError"
-                    defaultMessage='Upload "{file}" failed.'
-                    file={file.name}
-                  />
-                ),
-              },
-              2000,
-            );
-            image = {
-              dataset: {
-                data: BlankImageData,
-              },
-              width: 1,
-              height: 1,
-            };
-          }
+      const images = [];
+      for (const file of e.target.files) {
+        let image = await loadImageFromFile(file, maxSize);
+        if (!image) {
+          setAlert(
+            {
+              message: (
+                <Text
+                  id="paint.actionButton.uploadError"
+                  defaultMessage='Upload "{file}" failed.'
+                  file={file.name}
+                />
+              ),
+            },
+            2000,
+          );
+          image = {
+            dataset: {
+              data: BlankImageData,
+            },
+            width: 1,
+            height: 1,
+          };
+        }
+        image.name = file.name.slice(0, file.name.lastIndexOf('.'));
+        images.push(image);
+      }
+      delAlert(alertId);
+
+      batch(() => {
+        for (const image of images) {
           addAsset({
-            id: imageId,
+            id: image.id,
             type: 'image/png',
-            name: imageName,
+            name: image.name,
             data: image.dataset.data,
             width: image.width,
             height: image.height,
@@ -149,14 +153,12 @@ export function Selector({ mode, maxSize, onImagesFilter, onShowLibrary, onSurpr
             centerY: Math.floor(image.height / 2),
           });
           if (onChange) {
-            onChange(imageId);
+            onChange(image.id);
           }
         }
       });
-
-      delAlert(alertId);
     });
-  }, [onChange]);
+  }, []);
 
   const handlePaintImage = useCallback(() => {
     const imageId = nanoid();
@@ -175,7 +177,7 @@ export function Selector({ mode, maxSize, onImagesFilter, onShowLibrary, onSurpr
         onChange(imageId);
       }
     });
-  }, [onChange]);
+  }, []);
 
   const handleDeleteImage = useCallback(
     (i) => {
@@ -186,7 +188,7 @@ export function Selector({ mode, maxSize, onImagesFilter, onShowLibrary, onSurpr
         }
       });
     },
-    [images, onDelete],
+    [images],
   );
 
   const wrapDeleteImage = useCallback((i) => () => handleDeleteImage(i), [handleDeleteImage]);
@@ -203,7 +205,7 @@ export function Selector({ mode, maxSize, onImagesFilter, onShowLibrary, onSurpr
         onChange(imageId);
       }
     },
-    [images, onChange],
+    [images],
   );
 
   return (
