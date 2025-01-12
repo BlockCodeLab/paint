@@ -110,7 +110,7 @@ export function ColorPicker({ picking, color: defaultColor, outline, onChange, o
               style={{
                 left: `${Math.round((color / 360) * SLIDER_MAX_WIDTH)}px`,
               }}
-              onMouseDown={handleColorMouseDown}
+              onPointerDown={handleColorMouseDown}
               onClick={handleClick}
             ></div>
           </div>
@@ -138,7 +138,7 @@ export function ColorPicker({ picking, color: defaultColor, outline, onChange, o
               style={{
                 left: `${Math.round(saturation * SLIDER_MAX_WIDTH)}px`,
               }}
-              onMouseDown={handleSaturationMouseDown}
+              onPointerDown={handleSaturationMouseDown}
               onClick={handleClick}
             ></div>
           </div>
@@ -166,7 +166,7 @@ export function ColorPicker({ picking, color: defaultColor, outline, onChange, o
               style={{
                 left: `${Math.round(brightness * SLIDER_MAX_WIDTH)}px`,
               }}
-              onMouseDown={handleBrightnessMouseDown}
+              onPointerDown={handleBrightnessMouseDown}
               onClick={handleClick}
             ></div>
           </div>
