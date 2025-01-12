@@ -25,11 +25,11 @@ const moveSliderHandler = (e, setValue) => {
     setValue(x / SLIDER_MAX_WIDTH);
   };
   const mouseUp = () => {
-    document.removeEventListener('mousemove', mouseMove);
-    document.removeEventListener('mouseup', mouseUp);
+    document.removeEventListener('pointermove', mouseMove);
+    document.removeEventListener('pointerup', mouseUp);
   };
-  document.addEventListener('mousemove', mouseMove);
-  document.addEventListener('mouseup', mouseUp);
+  document.addEventListener('pointermove', mouseMove);
+  document.addEventListener('pointerup', mouseUp);
 };
 
 const clickSlider = (e, setValue) => {
@@ -48,22 +48,16 @@ export function ColorPicker({ picking, color: defaultColor, outline, onChange, o
 
   const setColor = useCallback(
     (value) => onChange(getColorObject(Math.round(value * 360), saturation, brightness)),
-    [saturation, brightness, onChange],
+    [saturation, brightness],
   );
 
-  const setSaturation = useCallback(
-    (value) => onChange(getColorObject(color, value, brightness)),
-    [color, brightness, onChange],
-  );
+  const setSaturation = useCallback((value) => onChange(getColorObject(color, value, brightness)), [color, brightness]);
 
-  const setBrightness = useCallback(
-    (value) => onChange(getColorObject(color, saturation, value)),
-    [color, saturation, onChange],
-  );
+  const setBrightness = useCallback((value) => onChange(getColorObject(color, saturation, value)), [color, saturation]);
 
   const handleClear = useCallback(
     () => onChange(getColorObject(color, saturation, brightness, true)),
-    [color, saturation, brightness, onChange],
+    [color, saturation, brightness],
   );
 
   const handleColorMouseDown = useCallback((e) => moveSliderHandler(e, setColor), [setColor]);
@@ -83,12 +77,16 @@ export function ColorPicker({ picking, color: defaultColor, outline, onChange, o
     [saturation, brightness],
   );
 
+  const handleClick = useCallback((e) => e.stopPropagation(), []);
+
+  const handlePickingColor = useCallback(() => onPickingColor(!picking), [picking]);
+
   return (
     <Tooltip
       clickable
       placement="bottom"
       className={styles.colorTooltip}
-      onHide={useCallback(() => onPickingColor(false), [onPickingColor])}
+      onHide={useCallback(() => setTimeout(() => onPickingColor(false), 50), [])}
       content={
         <>
           <div className={styles.tooltipItem}>
@@ -113,7 +111,7 @@ export function ColorPicker({ picking, color: defaultColor, outline, onChange, o
                 left: `${Math.round((color / 360) * SLIDER_MAX_WIDTH)}px`,
               }}
               onMouseDown={handleColorMouseDown}
-              onClick={useCallback((e) => e.stopPropagation(), [])}
+              onClick={handleClick}
             ></div>
           </div>
 
@@ -129,7 +127,9 @@ export function ColorPicker({ picking, color: defaultColor, outline, onChange, o
           <div
             className={classNames(styles.tooltipItem, styles.tooltipItemSlider)}
             style={{
-              background: `linear-gradient(to right, ${getColorObject(color, 0, brightness).hex} 0px, ${getColorObject(color, 1, brightness).hex} 100%)`,
+              background: `linear-gradient(to right, ${getColorObject(color, 0, brightness).hex} 0px, ${
+                getColorObject(color, 1, brightness).hex
+              } 100%)`,
             }}
             onClick={handleSaturationClick}
           >
@@ -139,7 +139,7 @@ export function ColorPicker({ picking, color: defaultColor, outline, onChange, o
                 left: `${Math.round(saturation * SLIDER_MAX_WIDTH)}px`,
               }}
               onMouseDown={handleSaturationMouseDown}
-              onClick={useCallback((e) => e.stopPropagation(), [])}
+              onClick={handleClick}
             ></div>
           </div>
 
@@ -155,7 +155,9 @@ export function ColorPicker({ picking, color: defaultColor, outline, onChange, o
           <div
             className={classNames(styles.tooltipItem, styles.tooltipItemSlider)}
             style={{
-              background: `linear-gradient(to right, ${getColorObject(color, saturation, 0).hex} 0px, ${getColorObject(color, saturation, 1).hex} 100%)`,
+              background: `linear-gradient(to right, ${getColorObject(color, saturation, 0).hex} 0px, ${
+                getColorObject(color, saturation, 1).hex
+              } 100%)`,
             }}
             onClick={handleBrightnessClick}
           >
@@ -165,7 +167,7 @@ export function ColorPicker({ picking, color: defaultColor, outline, onChange, o
                 left: `${Math.round(brightness * SLIDER_MAX_WIDTH)}px`,
               }}
               onMouseDown={handleBrightnessMouseDown}
-              onClick={useCallback((e) => e.stopPropagation(), [])}
+              onClick={handleClick}
             ></div>
           </div>
 
@@ -185,7 +187,7 @@ export function ColorPicker({ picking, color: defaultColor, outline, onChange, o
               className={classNames(styles.tooltipItemToolbarButton, {
                 [styles.selected]: picking,
               })}
-              onClick={onPickingColor}
+              onClick={handlePickingColor}
             >
               <img
                 src={pickerIcon}
