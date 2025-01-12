@@ -347,6 +347,7 @@ export function DrawBox({ zoom, maxSize, toolOptions, onSizeChange, onChange }) 
     }
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
+      tool.value?.cancelEditbox?.(); // 取消可能存在的文本编辑框
       ref.resizeObserver.unobserve(ref.current);
       ref.stage.destroy();
       ref.stage = null;
